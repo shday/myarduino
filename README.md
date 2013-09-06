@@ -1,4 +1,4 @@
 myarduino
 =========
 
-My personal projects and librarys folder used with the Arduino IDE.
+My personal projects and libraries folder used with the Arduino IDE.

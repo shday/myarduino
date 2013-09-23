@@ -6,11 +6,11 @@
  This example code is in the public domain.
  */
 
-#define y1Pin 9
-#define y2Pin 8
-#define w1Pin 7
-#define w2Pin 6
-#define gPin 10
+#define y1Pin 11
+#define y2Pin 10
+#define w1Pin 9
+#define w2Pin 8
+#define gPin  12
 
 boolean y1State = false;
 boolean y2State = false;

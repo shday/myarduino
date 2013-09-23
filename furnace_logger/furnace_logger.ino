@@ -12,6 +12,9 @@
 #define w2Pin 8
 #define gPin  12
 
+#define redLEDpin 2
+#define greenLEDpin 3
+
 boolean y1State = false;
 boolean y2State = false;
 boolean w1State = false;
@@ -46,6 +49,7 @@ int updateStates()
   w1State = w1;
   w2State = w2;
   gState = g;
+  digitalWrite(greenLEDpin, g);
   return changed; 
 }  
   
@@ -63,6 +67,8 @@ void setup() {
   pinMode(w1Pin,INPUT);
   pinMode(w2Pin,INPUT);
   pinMode(gPin,INPUT);
+  pinMode(redLEDpin, OUTPUT);
+  pinMode(greenLEDpin, OUTPUT);
   
   updateStates();
 }

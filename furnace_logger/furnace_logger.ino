@@ -7,7 +7,7 @@
  */
 
 #define y1Pin 11
-#define y2Pin 10
+#define y2Pin 13
 #define w1Pin 9
 #define w2Pin 8
 #define gPin  12

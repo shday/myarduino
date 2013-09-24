@@ -6,6 +6,8 @@
  This example code is in the public domain.
  */
 
+#include <Sensirion.h>
+
 #define y1Pin 11
 #define y2Pin 13
 #define w1Pin 9
@@ -15,11 +17,24 @@
 #define redLEDpin 2
 #define greenLEDpin 3
 
+#define dataPin 4
+#define clockPin 3
+
+#define READ_INTERVAL 60000
+
+
 boolean y1State = false;
 boolean y2State = false;
 boolean w1State = false;
 boolean w2State = false;
 boolean gState = false;
+float lastRecTemp;
+
+float temperature;
+float humidity;
+float dewpoint;
+
+Sensirion tempSensor = Sensirion(dataPin, clockPin); 
  
 int updateStates() 
 {
@@ -49,11 +64,28 @@ int updateStates()
   w1State = w1;
   w2State = w2;
   gState = g;
-  digitalWrite(greenLEDpin, g);
+  //digitalWrite(greenLEDpin, g);
   return changed; 
 }  
   
+int updateTemp()
+{
+  static unsigned long lastRead = 0;
+  uint32_t m = millis();
   
+    if ((m - lastRead) > READ_INTERVAL)
+    { 
+      digitalWrite(greenLEDpin, HIGH);
+      //now = RTC.now();
+      tempSensor.measure(&temperature, &humidity, &dewpoint);
+      digitalWrite(greenLEDpin, LOW);
+      lastRead = m;
+    }
+    
+    boolean changed =  abs(lastRecTemp - temperature) > 0.1;
+
+    return changed;
+}
   
   
   
@@ -70,18 +102,22 @@ void setup() {
   pinMode(redLEDpin, OUTPUT);
   pinMode(greenLEDpin, OUTPUT);
   
-  updateStates();
+  digitalWrite(greenLEDpin, HIGH);
+  tempSensor.measure(&temperature, &humidity, &dewpoint);
+  digitalWrite(greenLEDpin, LOW);
 }
 
 // the loop routine runs over and over again forever:
 void loop() {
-  
+
   uint32_t m = millis();
   
-  if (updateStates()== true) 
+  
+  if (updateStates()== true || updateTemp() == true )
   {
   //int sensorValue = analogRead(A2);
   // print out the value you read:
+  
   Serial.print(m);
   Serial.print(", ");
   Serial.print(gState); 
@@ -93,6 +129,13 @@ void loop() {
     Serial.print(w1State);
   Serial.print(", ");
     Serial.print(w2State);
+     Serial.print(", ");
+    Serial.print(temperature);
+    Serial.print(", ");
+    Serial.print(humidity);
   Serial.println("");
+  
+  lastRecTemp = temperature;
+  
   }
 }

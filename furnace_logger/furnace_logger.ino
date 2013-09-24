@@ -7,6 +7,8 @@
  */
 
 #include <Sensirion.h>
+#include "RTClib.h"
+#include "Wire.h"
 
 #define y1Pin 11
 #define y2Pin 13
@@ -18,6 +20,7 @@
 #define greenLEDpin 3
 
 #define READ_INTERVAL 10000
+#define ECHO_TO_SERIAL 1
 
 const uint8_t dataPin = 4;
 const uint8_t clockPin = 5;
@@ -32,8 +35,11 @@ float lastRecTemp = 0;
 float temperature;
 float humidity;
 float dewpoint;
+//char s_buffer[32];
 
 Sensirion tempSensor = Sensirion(dataPin, clockPin); 
+
+RTC_DS1307 RTC; 
  
 int updateStates() 
 {
@@ -75,7 +81,6 @@ int updateTemp()
     if ((m - lastRead) > READ_INTERVAL)
     { 
       digitalWrite(greenLEDpin, HIGH);
-      //now = RTC.now();
       tempSensor.measure(&temperature, &humidity, &dewpoint);
       digitalWrite(greenLEDpin, LOW);
       lastRead = m;
@@ -101,6 +106,10 @@ void setup() {
   pinMode(redLEDpin, OUTPUT);
   pinMode(greenLEDpin, OUTPUT);
   
+    Wire.begin();  
+    RTC.begin();
+  
+  
   digitalWrite(greenLEDpin, HIGH);
   tempSensor.measure(&temperature, &humidity, &dewpoint);
   digitalWrite(greenLEDpin, LOW);
@@ -108,17 +117,31 @@ void setup() {
 
 // the loop routine runs over and over again forever:
 void loop() {
-
-  uint32_t m = millis();
   
+  DateTime now;
+  uint32_t m = millis();
   
   if (updateStates()== true || updateTemp() == true )
   {
   //int sensorValue = analogRead(A2);
   // print out the value you read:
-  
+   now = RTC.now();
+  #if ECHO_TO_SERIAL
   Serial.print(m);
-  Serial.print(", ");
+  Serial.print(", ");   
+  Serial.print(now.year(), DEC);
+  Serial.print("-");
+  Serial.print(now.month(), DEC);
+  Serial.print("-");
+  Serial.print(now.day(), DEC);
+  Serial.print("T");
+  Serial.print(now.hour(), DEC);
+  Serial.print(":");
+  Serial.print(now.minute(), DEC);
+  Serial.print(":");
+  //Serial.print(dtostrf(now.second(), 2, 0, s_buffer));
+  Serial.print(now.second(),DEC);
+    Serial.print(", ");
   Serial.print(gState); 
   Serial.print(", ");
   Serial.print(y1State);
@@ -133,6 +156,8 @@ void loop() {
     Serial.print(", ");
     Serial.print(humidity);
   Serial.println("");
+  #endif
+  
   
   lastRecTemp = temperature;
   

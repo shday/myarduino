@@ -17,10 +17,10 @@
 #define redLEDpin 2
 #define greenLEDpin 3
 
-#define READ_INTERVAL 60000
+#define READ_INTERVAL 10000
 
 const uint8_t dataPin = 4;
-const uint8_t clockPin = 3;
+const uint8_t clockPin = 5;
 
 boolean y1State = false;
 boolean y2State = false;

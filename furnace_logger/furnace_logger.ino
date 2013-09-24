@@ -17,18 +17,17 @@
 #define redLEDpin 2
 #define greenLEDpin 3
 
-#define dataPin 4
-#define clockPin 3
-
 #define READ_INTERVAL 60000
 
+const uint8_t dataPin = 4;
+const uint8_t clockPin = 3;
 
 boolean y1State = false;
 boolean y2State = false;
 boolean w1State = false;
 boolean w2State = false;
 boolean gState = false;
-float lastRecTemp;
+float lastRecTemp = 0;
 
 float temperature;
 float humidity;

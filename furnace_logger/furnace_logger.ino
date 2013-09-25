@@ -39,7 +39,7 @@ float humidity;
 float dewpoint;
 //char s_buffer[32];
 
-char filename[] = "FURNACE00.CSV";
+char filename[] = "LOGGER00.CSV";
 
 // the logging file
 File logfile;

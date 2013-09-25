@@ -48,7 +48,7 @@ Sensirion tempSensor = Sensirion(dataPin, clockPin);
 
 RTC_DS1307 RTC; 
 
-int updateTemp(boolean force = true)
+int updateTemp(boolean force = false)
 {
   static unsigned long lastRead = 0;
   uint32_t m = millis();
@@ -96,7 +96,7 @@ int updateStates()
   w2State = w2;
   gState = g;
   
-  if (changed == true){ updateTemp(true); }
+  //if (changed == true){ updateTemp(true); }
      
   //digitalWrite(greenLEDpin, g);
   return changed; 

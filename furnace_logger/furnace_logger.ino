@@ -9,6 +9,7 @@
 #include <Sensirion.h>
 #include "RTClib.h"
 #include "Wire.h"
+#include "SD.h"
 
 #define y1Pin 11
 #define y2Pin 13
@@ -24,6 +25,7 @@
 
 const uint8_t dataPin = 4;
 const uint8_t clockPin = 5;
+const int chipSelect = 10; //for the SD card
 
 boolean y1State = false;
 boolean y2State = false;
@@ -37,9 +39,33 @@ float humidity;
 float dewpoint;
 //char s_buffer[32];
 
+char filename[] = "FURNACE00.CSV";
+
+// the logging file
+File logfile;
+
 Sensirion tempSensor = Sensirion(dataPin, clockPin); 
 
 RTC_DS1307 RTC; 
+
+int updateTemp(boolean force = true)
+{
+  static unsigned long lastRead = 0;
+  uint32_t m = millis();
+  
+    if (force == true || (m - lastRead) > READ_INTERVAL)
+    { 
+      digitalWrite(greenLEDpin, HIGH);
+      tempSensor.measure(&temperature, &humidity, &dewpoint);
+      digitalWrite(greenLEDpin, LOW);
+      lastRead = m;
+    }
+    
+    boolean changed =  abs(lastRecTemp - temperature) > 0.1;
+
+    return changed;
+}
+
  
 int updateStates() 
 {
@@ -69,28 +95,24 @@ int updateStates()
   w1State = w1;
   w2State = w2;
   gState = g;
+  
+  if (changed == true){ updateTemp(true); }
+     
   //digitalWrite(greenLEDpin, g);
   return changed; 
 }  
   
-int updateTemp()
+ 
+void error(char *str)
 {
-  static unsigned long lastRead = 0;
-  uint32_t m = millis();
+  Serial.print("error: ");
+  Serial.println(str);
   
-    if ((m - lastRead) > READ_INTERVAL)
-    { 
-      digitalWrite(greenLEDpin, HIGH);
-      tempSensor.measure(&temperature, &humidity, &dewpoint);
-      digitalWrite(greenLEDpin, LOW);
-      lastRead = m;
-    }
-    
-    boolean changed =  abs(lastRecTemp - temperature) > 0.1;
-
-    return changed;
-}
+  // red LED indicates error
+  digitalWrite(redLEDpin, HIGH);
   
+  while(1);
+} 
   
   
  
@@ -106,6 +128,40 @@ void setup() {
   pinMode(redLEDpin, OUTPUT);
   pinMode(greenLEDpin, OUTPUT);
   
+  pinMode(10, OUTPUT);
+  
+  // see if the card is present and can be initialized:
+  if (!SD.begin(chipSelect)) {
+    error("Card failed, or not present");
+  }
+  Serial.println("card initialized.");
+  
+  // create a new file
+  //char filename[] = "LOGGER00.CSV";
+  for (uint8_t i = 0; i < 100; i++) {
+    filename[6] = i/10 + '0';
+    filename[7] = i%10 + '0';
+    if (! SD.exists(filename)) {
+      // only open a new file if it doesn't exist
+      logfile = SD.open(filename, FILE_WRITE); 
+      break;  // leave the loop!
+    }
+  }
+  
+  if (! logfile) {
+    error("couldnt create file");
+  }
+  
+  Serial.print("Logging to: ");
+  Serial.println(filename);
+
+  logfile.println("millis,time,fan,Y1,Y2,W1,W1,temperature,humidity");    
+#if ECHO_TO_SERIAL
+  Serial.println("millis,time,fan,Y1,Y2,W1,W1,temperature,humidity");
+#endif //ECHO_TO_SERIAL
+
+  logfile.close();  
+  
     Wire.begin();  
     RTC.begin();
   
@@ -119,15 +175,48 @@ void setup() {
 void loop() {
   
   DateTime now;
-  uint32_t m = millis();
   
   if (updateStates()== true || updateTemp() == true )
   {
-  //int sensorValue = analogRead(A2);
-  // print out the value you read:
-   now = RTC.now();
+  digitalWrite(redLEDpin, HIGH);
+  logfile = SD.open(filename, FILE_WRITE); 
+  now = RTC.now();
+  uint32_t m = millis();
+  
+  logfile.print(m,DEC);
+  logfile.print(", ");   
+  logfile.print(now.year(), DEC);
+  logfile.print("-");
+  logfile.print(now.month(), DEC);
+  logfile.print("-");
+  logfile.print(now.day(), DEC);
+  logfile.print("T");
+  logfile.print(now.hour(), DEC);
+  logfile.print(":");
+  logfile.print(now.minute(), DEC);
+  logfile.print(":");
+  logfile.print(now.second(),DEC);
+  logfile.print(", ");
+  logfile.print(gState); 
+  logfile.print(", ");
+  logfile.print(y1State);
+  logfile.print(", ");
+  logfile.print(y2State);
+  logfile.print(", ");
+  logfile.print(w1State);
+  logfile.print(", ");
+  logfile.print(w2State);
+  logfile.print(", ");
+  logfile.print(temperature);
+  logfile.print(", ");
+  logfile.print(humidity);
+  logfile.println("");
+ 
+  logfile.close();
+  digitalWrite(redLEDpin, LOW); 
+  
   #if ECHO_TO_SERIAL
-  Serial.print(m);
+  Serial.print(m,DEC);
   Serial.print(", ");   
   Serial.print(now.year(), DEC);
   Serial.print("-");
@@ -139,22 +228,21 @@ void loop() {
   Serial.print(":");
   Serial.print(now.minute(), DEC);
   Serial.print(":");
-  //Serial.print(dtostrf(now.second(), 2, 0, s_buffer));
   Serial.print(now.second(),DEC);
-    Serial.print(", ");
+  Serial.print(", ");
   Serial.print(gState); 
   Serial.print(", ");
   Serial.print(y1State);
   Serial.print(", ");
-    Serial.print(y2State);
+  Serial.print(y2State);
   Serial.print(", ");
-    Serial.print(w1State);
+  Serial.print(w1State);
   Serial.print(", ");
-    Serial.print(w2State);
-     Serial.print(", ");
-    Serial.print(temperature);
-    Serial.print(", ");
-    Serial.print(humidity);
+  Serial.print(w2State);
+  Serial.print(", ");
+  Serial.print(temperature);
+  Serial.print(", ");
+  Serial.print(humidity);
   Serial.println("");
   #endif
   

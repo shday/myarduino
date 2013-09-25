@@ -11,11 +11,11 @@
 #include "Wire.h"
 #include "SD.h"
 
-#define y1Pin 11
-#define y2Pin 13
+#define y1Pin A2
+#define y2Pin A3
 #define w1Pin 9
-#define w2Pin 8
-#define gPin  12
+#define w2Pin A0
+#define gPin  A1
 
 #define redLEDpin 2
 #define greenLEDpin 3

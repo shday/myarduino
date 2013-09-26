@@ -21,7 +21,7 @@
 #define greenLEDpin 3
 
 #define READ_INTERVAL 10000
-#define ECHO_TO_SERIAL 1
+#define ECHO_TO_SERIAL 0
 
 const uint8_t dataPin = 4;
 const uint8_t clockPin = 5;
@@ -155,9 +155,9 @@ void setup() {
   Serial.print("Logging to: ");
   Serial.println(filename);
 
-  logfile.println("millis,time,fan,Y1,Y2,W1,W1,temperature,humidity");    
+  logfile.println("millis,time,fan,Y1,Y2,W1,W2,temperature,humidity");    
 #if ECHO_TO_SERIAL
-  Serial.println("millis,time,fan,Y1,Y2,W1,W1,temperature,humidity");
+  Serial.println("millis,time,fan,Y1,Y2,W1,W2,temperature,humidity");
 #endif //ECHO_TO_SERIAL
 
   logfile.close();  
@@ -185,12 +185,13 @@ void loop() {
   
   logfile.print(m,DEC);
   logfile.print(", ");   
-  logfile.print(now.year(), DEC);
-  logfile.print("-");
+
   logfile.print(now.month(), DEC);
-  logfile.print("-");
+  logfile.print("/");
   logfile.print(now.day(), DEC);
-  logfile.print("T");
+  logfile.print("/");  
+  logfile.print(now.year(), DEC);
+  logfile.print(" ");
   logfile.print(now.hour(), DEC);
   logfile.print(":");
   logfile.print(now.minute(), DEC);
@@ -218,12 +219,12 @@ void loop() {
   #if ECHO_TO_SERIAL
   Serial.print(m,DEC);
   Serial.print(", ");   
-  Serial.print(now.year(), DEC);
-  Serial.print("-");
   Serial.print(now.month(), DEC);
-  Serial.print("-");
+  Serial.print("/");
   Serial.print(now.day(), DEC);
-  Serial.print("T");
+  Serial.print("/");  
+  Serial.print(now.year(), DEC);
+  Serial.print(" ");
   Serial.print(now.hour(), DEC);
   Serial.print(":");
   Serial.print(now.minute(), DEC);

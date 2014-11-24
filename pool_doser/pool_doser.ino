@@ -1,27 +1,125 @@
-int enablePin = 11;
-int in1Pin = 10;
-int in2Pin = 9;
-int switchPin = 7;
+const uint8_t motorPin = 3;
+//int in1Pin = 10onst;
+//int in2Pin = 9;
+const uint8_t buttonPin = 7;
+const uint8_t ledPin = 13;
 //int potPin = 0;
+int speed = 100;
+
+int buttonState = HIGH;             // the current reading from the input pin
+int blinkState = LOW;  
+long dosesPerDay = 4;
+int maxDosesPerDay = 8;
+int lastButtonState = HIGH;   // the previous reading from the input pin
+int blinkCount = 0;
+int ledState = LOW;
+
+// the following variables are long's because the time, measured in miliseconds,
+// will quickly become a bigger number than can be stored in an int.
+long lastDebounceTime = 0;  // the last time the output pin was toggled
+long debounceDelay = 50;    // the debounce time; increase if the output flickers
+long doseInterval = 60000/dosesPerDay;
+long doseDuration = 4000;
+long longPressTime = 2000;
+long lastBlinkTime = 0;
+long lastDoseTime = 0;
+long blinkPause = 3000;
+long blinkInterval = 500;
+
  
 void setup()
 {
-pinMode(in1Pin, OUTPUT);
-pinMode(in2Pin, OUTPUT);
-pinMode(enablePin, OUTPUT);
-pinMode(switchPin, INPUT_PULLUP);
+//pinMode(in1Pin, OUTPUT);
+//pinMode(in2Pin, OUTPUT);
+pinMode(motorPin, OUTPUT);
+pinMode(buttonPin, INPUT_PULLUP);
+pinMode(ledPin, OUTPUT);
+Serial.begin(9600);
+while (! Serial);
+Serial.println("Speed 0 to 255");
+
+
 }
  
 void loop()
 {
-//int speed = analogRead(potPin) / 4;
-boolean reverse = digitalRead(switchPin);
-setMotor(255, reverse);
-}
- 
-void setMotor(int enable, boolean reverse)
-{
-analogWrite(enablePin, enable);
-digitalWrite(in1Pin, ! reverse);
-digitalWrite(in2Pin, reverse);
-}
+//if (Serial.available())
+//    {
+//    speed = Serial.parseInt();
+//    }
+
+ // static unsigned long lastSync = 0;
+ // static unsigned long lastRead = 0;
+  // log milliseconds since starting
+  uint32_t m = millis();
+
+  int reading = digitalRead(buttonPin);
+    if (reading != lastButtonState) { 
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  } 
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+    lastButtonState = buttonState;
+    buttonState = reading;
+    if (buttonState != lastButtonState && buttonState == LOW 
+        && m - lastDebounceTime <= longPressTime) {
+      dosesPerDay++;
+      if (dosesPerDay > maxDosesPerDay) 
+          { dosesPerDay = 1 ;}
+      doseInterval = 60000/dosesPerDay;
+      blinkState = LOW;
+      blinkCount = 0;
+      digitalWrite(ledPin,LOW);
+        }
+    /*  Serial.print(buttonPushCounter);
+      Serial.print(",");
+      Serial.println(mode);
+      Serial.print(","); 
+      Serial.print(rawKnobPosition);
+      Serial.print(",");   
+      Serial.println(knobPosition); */
+    
+  }
+  lastButtonState = reading;
+  
+if (millis() - lastDoseTime > doseInterval) {
+        lastDoseTime = millis();
+        analogWrite(motorPin, speed);
+        Serial.println("got here");
+      }
+else if (millis() - lastDoseTime > doseDuration) {
+        analogWrite(motorPin, 0); 
+      }
+   
+
+    if (blinkState == HIGH){
+        if (millis() - lastBlinkTime > blinkInterval) {
+            lastBlinkTime = millis();
+            
+            Serial.print(doseInterval);
+            Serial.print(","); 
+            Serial.println(lastDoseTime);
+            if (ledState == LOW){
+                ledState = HIGH;}
+            else {
+                ledState = LOW;
+                blinkCount = blinkCount + 1;
+                if (blinkCount == dosesPerDay){
+                    blinkState = LOW;
+                    blinkCount = 0;
+                     }
+                 }    
+            digitalWrite(ledPin,ledState);
+            }
+        }
+    else if (blinkState == LOW) {
+        if (millis() - lastBlinkTime > blinkPause) {
+            lastBlinkTime = millis();
+            blinkState = HIGH;
+            }
+    }
+
+    
+} 

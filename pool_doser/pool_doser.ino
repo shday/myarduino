@@ -4,7 +4,7 @@ const uint8_t motorPin = 3;
 const uint8_t buttonPin = 7;
 const uint8_t ledPin = 13;
 //int potPin = 0;
-int speed = 200;
+int speed = 255;
 
 int buttonState = HIGH;             // the current reading from the input pin
 int blinkState = LOW;  
@@ -18,8 +18,8 @@ int ledState = LOW;
 // will quickly become a bigger number than can be stored in an int.
 long lastDebounceTime = 0;  // the last time the output pin was toggled
 long debounceDelay = 50;    // the debounce time; increase if the output flickers
-long doseInterval = 60000/dosesPerDay;
-long doseDuration = 4000;
+long doseInterval = 60000L*60L*24L/dosesPerDay;
+long doseDuration = 30000; //160 sec per 100g with 6V and speed 200
 long longPressTime = 2000;
 long lastBlinkTime = 0;
 long lastDoseTime = 0;
@@ -71,7 +71,7 @@ void loop()
       dosesPerDay++;
       if (dosesPerDay > maxDosesPerDay) 
           { dosesPerDay = 1 ;}
-      doseInterval = 60000/dosesPerDay;
+      doseInterval = 60000L*60L*24L/dosesPerDay;
       blinkState = LOW;
       blinkCount = 0;
       digitalWrite(ledPin,LOW);
@@ -112,9 +112,9 @@ else if (millis() - lastDoseTime > doseDuration) {
         if (millis() - lastBlinkTime > blinkInterval) {
             lastBlinkTime = millis();
             
-            Serial.print(doseInterval);
-            Serial.print(","); 
-            Serial.println(lastDoseTime);
+            //Serial.print(doseInterval);
+            //Serial.print(","); 
+            //Serial.println(lastDoseTime);
             if (ledState == LOW){
                 ledState = HIGH;}
             else {

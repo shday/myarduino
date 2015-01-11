@@ -3,6 +3,12 @@
 #include <avr/sleep.h>
 
 #define INTER_BLINK_DELAY 2000
+#define WDT_PRESCALER 9
+#define WDT_BASE_TICK 18.49
+
+
+const int wdt_tick = WDT_BASE_TICK * pow(2,WDT_PRESCALER) ;//millis per wdt count
+const long day_millis = 86400000L;
 
 int led = 1;
 int button = 2;
@@ -53,7 +59,7 @@ void setup() {
   } else {
     mode = 0;
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    setup_watchdog(9); 
+    setup_watchdog(WDT_PRESCALER); 
     
   }
   
@@ -62,39 +68,46 @@ void setup() {
 
 
 void loop() {
-  if (mode==0) {
+  switch(mode) {
+    
+    case 0:
+    
     static long last_watchdog_counter = 0;
     
     if (watchdog_counter == last_watchdog_counter) {
       //this means sleep was left by a button push or reset
-      //int m = millis();
-      //int pushDuration = 0;
       digitalWrite(led,HIGH);
       delay(1000); //
-      //while (digitalRead(button)==LOW || pushDuration < longDuration) {
-      //  pushDuration = millis() - m;
-      //}
       digitalWrite(led,LOW);
+      
       if (digitalRead(button)==HIGH) {
         //do the info routine
         doBlink(readBatteryLevel(),250,500);
         delay(INTER_BLINK_DELAY);
-        doBlink(readDoseFrequency(),250,500);
+        doBlink(getDoseFrequency(),250,500);
         delay(INTER_BLINK_DELAY);
-        doBlink(readDoseDuration(),250,500);
-        
+        doBlink(getDoseDuration(),250,500);
       } else {
         runMotor(0);
         //run the motor manually
       }
       
-    } else if (true) {
-      //nothing yet
-      digitalWrite(led, !digitalRead(led));  
+    } else if (watchdog_counter >= getDoseIntervalTicks()) {
+      //time to dose
+      watchdog_counter = 0;
+      runMotor(getDoseDuration());  
     }
       
     last_watchdog_counter = watchdog_counter;
     sleep();
+    break;
+    
+    case 1:
+
+    //programming code
+    
+    break;
+    
   }  
 } 
 
@@ -111,12 +124,17 @@ int readBatteryLevel() {
   return 3;
 }
 
-int readDoseFrequency() {
+int getDoseFrequency() {
   return 3;
 }
 
-int readDoseDuration() {
+int getDoseDuration() {
   return 3;
+}
+
+int getDoseIntervalTicks() {
+  //watchdog_counter counts in a dose interval
+  return day_millis/getDoseFrequency()/wdt_tick;
 }
 
 void runMotor(long duration) {
@@ -126,6 +144,9 @@ void runMotor(long duration) {
     doBlink(1,100,200);
   }
 }
+
+
+  
 
 
 //Sets the watchdog timer to wake us up, but not reset

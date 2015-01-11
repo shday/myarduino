@@ -2,17 +2,23 @@
  
 #include <avr/sleep.h>
 
- 
+#define INTER_BLINK_DELAY 2000
 
 int led = 1;
 int button = 2;
+//int longDuration = 2000;
 int mode;
+//boolean pinChange = false;
 volatile long watchdog_counter = 0;
 
 
 ISR(WDT_vect) {
 watchdog_counter += 1;
 }
+
+//ISR(PCINT0_vect) {
+//pinChange = true;
+//}
 
 
 EMPTY_INTERRUPT(PCINT0_vect)
@@ -57,14 +63,29 @@ void setup() {
 
 void loop() {
   if (mode==0) {
-    static long last_watchdog_counter = -1;
+    static long last_watchdog_counter = 0;
+    
     if (watchdog_counter == last_watchdog_counter) {
-      //this means sleep was left by a button push
-      delay(2000);
-      if (digitalRead(button)==LOW) {
-        //run the motor manually
-      } else {
+      //this means sleep was left by a button push or reset
+      //int m = millis();
+      //int pushDuration = 0;
+      digitalWrite(led,HIGH);
+      delay(1000); //
+      //while (digitalRead(button)==LOW || pushDuration < longDuration) {
+      //  pushDuration = millis() - m;
+      //}
+      digitalWrite(led,LOW);
+      if (digitalRead(button)==HIGH) {
         //do the info routine
+        doBlink(readBatteryLevel(),250,500);
+        delay(INTER_BLINK_DELAY);
+        doBlink(readDoseFrequency(),250,500);
+        delay(INTER_BLINK_DELAY);
+        doBlink(readDoseDuration(),250,500);
+        
+      } else {
+        runMotor(0);
+        //run the motor manually
       }
       
     } else if (true) {
@@ -76,6 +97,35 @@ void loop() {
     sleep();
   }  
 } 
+
+void doBlink(int n_blinks, int blink_duration,int blink_delay) {
+  for (int x = 0; x < n_blinks; x++) {
+    digitalWrite(led,HIGH);
+    delay(blink_duration);
+    digitalWrite(led,LOW);
+    delay(blink_delay);
+  }
+}
+
+int readBatteryLevel() {
+  return 3;
+}
+
+int readDoseFrequency() {
+  return 3;
+}
+
+int readDoseDuration() {
+  return 3;
+}
+
+void runMotor(long duration) {
+  long m = millis();
+  
+  while (millis() - m < duration || digitalRead(button)==LOW) {
+    doBlink(1,100,200);
+  }
+}
 
 
 //Sets the watchdog timer to wake us up, but not reset

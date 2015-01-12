@@ -4,10 +4,11 @@
 
 #define INTER_BLINK_DELAY 2000
 #define WDT_PRESCALER 9
-#define WDT_BASE_TICK 18.49
+//#define WDT_BASE_TICK 18.49
+#define DOSE_BASE 1000
+#define WDT_TICK 9467
 
-
-const int wdt_tick = WDT_BASE_TICK * pow(2,WDT_PRESCALER) ;//millis per wdt count
+//const int wdt_tick = 18.49 * WDT_BASE_TICK * pow(2.0,WDT_PRESCALER) ;//millis per wdt count
 const long day_millis = 86400000L;
 
 int led = 1;
@@ -72,7 +73,8 @@ void loop() {
     
     case 0:
     
-    static long last_watchdog_counter = 0;
+    static long last_watchdog_counter = -1;
+    static int dose_count = 0;
     
     if (watchdog_counter == last_watchdog_counter) {
       //this means sleep was left by a button push or reset
@@ -82,20 +84,24 @@ void loop() {
       
       if (digitalRead(button)==HIGH) {
         //do the info routine
-        doBlink(readBatteryLevel(),250,500);
+        delay(1000);
+        doBlink(readBatteryLevel(),250,500);        
         delay(INTER_BLINK_DELAY);
         doBlink(getDoseFrequency(),250,500);
         delay(INTER_BLINK_DELAY);
-        doBlink(getDoseDuration(),250,500);
+        doBlink(getDoseLevel(),250,500);
       } else {
         runMotor(0);
         //run the motor manually
       }
       
-    } else if (watchdog_counter >= getDoseIntervalTicks()) {
+    } else if (watchdog_counter*WDT_TICK - dose_count*getDoseInterval() >= getDoseInterval()) {
       //time to dose
-      watchdog_counter = 0;
-      runMotor(getDoseDuration());  
+      long dose_duration = getDoseLevel() * DOSE_BASE;
+      runMotor(dose_duration); 
+      dose_count += 1;
+    } else {
+      doBlink(1,50,50);
     }
       
     last_watchdog_counter = watchdog_counter;
@@ -125,16 +131,16 @@ int readBatteryLevel() {
 }
 
 int getDoseFrequency() {
-  return 3;
+  return 24*6;
 }
 
-int getDoseDuration() {
-  return 3;
+int getDoseLevel() {
+  return 10;
 }
 
-int getDoseIntervalTicks() {
+long getDoseInterval() {
   //watchdog_counter counts in a dose interval
-  return day_millis/getDoseFrequency()/wdt_tick;
+  return day_millis/getDoseFrequency();
 }
 
 void runMotor(long duration) {

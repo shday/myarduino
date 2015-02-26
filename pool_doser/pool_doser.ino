@@ -4,7 +4,7 @@ const uint8_t motorPin = 3;
 const uint8_t buttonPin = 7;
 const uint8_t ledPin = 13;
 //int potPin = 0;
-int speed = 255;
+int speed = 150;
 
 int buttonState = HIGH;             // the current reading from the input pin
 int blinkState = LOW;  

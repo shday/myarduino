@@ -1,18 +1,29 @@
 
  
 #include <avr/sleep.h>
+//#include <avr/power.h>
+//#include <avr/wdt.h>
 
 #define INTER_BLINK_DELAY 2000
 #define WDT_PRESCALER 9
 //#define WDT_BASE_TICK 18.49
 #define DOSE_BASE 1000
-#define WDT_TICK 9467
+#define WDT_TICK 9456
 
 //const int wdt_tick = 18.49 * WDT_BASE_TICK * pow(2.0,WDT_PRESCALER) ;//millis per wdt count
-const long day_millis = 86400000L;
+//const long day_millis = 86400000L;
+const long day_millis = 60000L;
 
+#if defined(__AVR_ATtiny85__)
 int led = 1;
 int button = 2;
+#else
+//assign UNO pins here
+int led = 13;
+int button = 2;
+#endif
+
+
 //int longDuration = 2000;
 int mode;
 //boolean pinChange = false;
@@ -27,13 +38,22 @@ watchdog_counter += 1;
 //pinChange = true;
 //}
 
-
+#if defined(__AVR_ATtiny85__)
 EMPTY_INTERRUPT(PCINT0_vect)
+#else
+//pin interrupt ISR for UNO here
+void wakeUpNow()        // here the interrupt is handled after wakeup
+{
+  // execute code here after wake-up before returning to the loop() function
+  // timers and code using timers (serial.print and more...) will not work here.
+  // we don't really need to execute any special functions here, since we
+  // just want the thing to wake up
+}
+#endif
 
-
+#if defined(__AVR_ATtiny85__)
 void sleep()
 {
-  
   GIMSK |= 1<<PCIE; //Enable Pin Change Interrupt
   PCMSK |= 1<<PCINT2; //Watch for Pin Change on Pin5 (PB0)
  
@@ -46,8 +66,50 @@ void sleep()
  
  GIMSK &= ~(1<<PCIE); //Disable the interrupt so it doesn't keep flagging
  PCMSK &= ~(1<<PCINT2);  
-  
 }
+#else
+void sleep()
+{
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);   // sleep mode is set here
+ 
+    sleep_enable();          // enables the sleep bit in the mcucr register
+                             // so sleep is possible. just a safety pin
+ 
+    /* Now it is time to enable an interrupt. We do it here so an
+     * accidentally pushed interrupt button doesn't interrupt
+     * our running program. if you want to be able to run
+     * interrupt code besides the sleep function, place it in
+     * setup() for example.
+     *
+     * In the function call attachInterrupt(A, B, C)
+     * A   can be either 0 or 1 for interrupts on pin 2 or 3.  
+     *
+     * B   Name of a function you want to execute at interrupt for A.
+     *
+     * C   Trigger mode of the interrupt pin. can be:
+     *             LOW        a low level triggers
+     *             CHANGE     a change in level triggers
+     *             RISING     a rising edge of a level triggers
+     *             FALLING    a falling edge of a level triggers
+     *
+     * In all but the IDLE sleep modes only LOW can be used.
+     */
+ 
+    attachInterrupt(0,wakeUpNow, CHANGE); // use interrupt 0 (pin 2) and run function
+                                       // wakeUpNow when pin 2 gets LOW
+ 
+    sleep_mode();            // here the device is actually put to sleep!!
+                             // THE PROGRAM CONTINUES FROM HERE AFTER WAKING UP
+ 
+    sleep_disable();         // first thing after waking from sleep:
+                             // disable sleep...
+    detachInterrupt(0);      // disables interrupt 0 on pin 2 so the
+                             // wakeUpNow code will not be executed
+                             // during normal running time.
+ 
+}
+#endif
+
 
 
 void setup() {                
@@ -131,7 +193,7 @@ int readBatteryLevel() {
 }
 
 int getDoseFrequency() {
-  return 24*6;
+  return 2;
 }
 
 int getDoseLevel() {
@@ -139,7 +201,7 @@ int getDoseLevel() {
 }
 
 long getDoseInterval() {
-  //watchdog_counter counts in a dose interval
+  //millis between doses
   return day_millis/getDoseFrequency();
 }
 
@@ -153,7 +215,7 @@ void runMotor(long duration) {
 
 
   
-
+#if defined(__AVR_ATtiny85__)
 
 //Sets the watchdog timer to wake us up, but not reset
 //0=16ms, 1=32ms, 2=64ms, 3=128ms, 4=250ms, 5=500ms
@@ -169,3 +231,27 @@ WDTCR |= (1<<WDCE) | (1<<WDE); //Set WD_change enable, set WD enable
 WDTCR = bb; //Set new watchdog timeout value
 WDTCR |= _BV(WDIE); //Set the interrupt enable, this will keep unit from resetting after each int
 }
+#else
+void setup_watchdog(int timerPrescaler) {
+  // This next section of code is timing critical, so interrupts are disabled.
+  // See more details of how to change the watchdog in the ATmega328P datasheet
+  // around page 50, Watchdog Timer.
+  noInterrupts();
+  
+  // Set the watchdog reset bit in the MCU status register to 0.
+  MCUSR &= ~(1<<WDRF);
+  
+  // Set WDCE and WDE bits in the watchdog control register.
+  WDTCSR |= (1<<WDCE) | (1<<WDE);
+
+  // Set watchdog clock prescaler bits to a value of 8 seconds.
+  WDTCSR = (1<<WDP0) | (1<<WDP3);
+  
+  // Enable watchdog as interrupt only (no reset).
+  WDTCSR |= (1<<WDIE);
+  
+  // Enable interrupts again.
+  interrupts();
+ 
+}
+#endif

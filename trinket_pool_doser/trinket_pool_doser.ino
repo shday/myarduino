@@ -15,12 +15,20 @@
 const long day_millis = 60000L;
 
 #if defined(__AVR_ATtiny85__)
-int led = 1;
-int button = 2;
+#define ECHO_TO_SERIAL   0 // echo data to serial port
+int led = 0;
+int button = 3;
+int motor = 1;
+int battery = 4;
+int current = 2;
 #else
+#define ECHO_TO_SERIAL   1 // echo data to serial port
 //assign UNO pins here
 int led = 13;
-int button = 2;
+int button = 2; //must stay as pin 2 for interrupt to work 
+int motor = 3;
+int battery = 4;
+int current = 2;
 #endif
 
 
@@ -112,10 +120,26 @@ void sleep()
 
 
 
-void setup() {                
+void setup() {  
+  
+  #if ECHO_TO_SERIAL
+  Serial.begin(9600);
+  Serial.println("Hello");  
+  #endif
+  
+  #if defined(__AVR_ATtiny85__)
+  //
+  #else
+  analogReference(EXTERNAL);
+  #endif
+
+  analogRead(battery); //the first read should be ignored
   
   pinMode(led, OUTPUT);  
   pinMode(button, INPUT_PULLUP); 
+  pinMode(motor, OUTPUT);
+  
+  
   
   if (digitalRead(button)== LOW) {
     mode = 1;
@@ -189,7 +213,24 @@ void doBlink(int n_blinks, int blink_duration,int blink_delay) {
 }
 
 int readBatteryLevel() {
-  return 3;
+  int batteryLevel;
+  
+  long rawReading = analogRead(battery);
+  float rawVoltage = rawReading/1024.0 * 3.3;
+  float batteryVoltage = 3.2 * rawVoltage;
+
+  if ( batteryVoltage > 7.8 ) { batteryLevel = 4; }
+  else if ( batteryVoltage > 7.2 ) { batteryLevel = 3; }
+  else if ( batteryVoltage > 6.6 ) { batteryLevel = 2; }
+  else { batteryLevel = 1; }
+
+  #if ECHO_TO_SERIAL
+  Serial.print(rawReading); Serial.print(", "); 
+  Serial.print(rawVoltage); Serial.print(", "); 
+  Serial.print(batteryVoltage);  Serial.print(", ");
+  Serial.println(batteryLevel);
+  #endif
+  return batteryLevel;
 }
 
 int getDoseFrequency() {
@@ -197,7 +238,7 @@ int getDoseFrequency() {
 }
 
 int getDoseLevel() {
-  return 10;
+  return 5;
 }
 
 long getDoseInterval() {
@@ -206,11 +247,28 @@ long getDoseInterval() {
 }
 
 void runMotor(long duration) {
+  int batteryLevel;
   long m = millis();
+  analogWrite(motor,255);
+
   
   while (millis() - m < duration || digitalRead(button)==LOW) {
+    long rawReading = analogRead(current);
+    float rawVoltage = rawReading/1024.0 * 3.3;
+    long motorCurrent = rawVoltage/1.4 * 1000;
+    #if ECHO_TO_SERIAL
+    Serial.print(rawReading); Serial.print(", "); 
+    Serial.print(rawVoltage); Serial.print(", "); 
+    Serial.println(motorCurrent); 
+    #endif
+    if ( motorCurrent > 400 ) {
+      analogWrite(motor,0); 
+      doBlink(5,200,200);
+      break;
+    }
     doBlink(1,100,200);
   }
+  analogWrite(motor,0);
 }
 
 

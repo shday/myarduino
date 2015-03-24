@@ -1,8 +1,12 @@
 
  
 #include <avr/sleep.h>
+#include <EEPROM.h>
 //#include <avr/power.h>
 //#include <avr/wdt.h>
+
+#define DOSE_LEVEL_ADDR 0
+#define DOSE_FREQUENCY_ADDR 1
 
 #define INTER_BLINK_DELAY 2000
 #define WDT_PRESCALER 9
@@ -24,7 +28,7 @@ int current = 2;
 #else
 #define ECHO_TO_SERIAL   1 // echo data to serial port
 //assign UNO pins here
-int led = 13;
+int led = 11;
 int button = 2; //must stay as pin 2 for interrupt to work 
 int motor = 3;
 int battery = 4;
@@ -143,6 +147,9 @@ void setup() {
   
   if (digitalRead(button)== LOW) {
     mode = 1;
+    EEPROM.write(DOSE_FREQUENCY_ADDR, 2);
+    EEPROM.write(DOSE_LEVEL_ADDR, 5);
+    
   } else {
     mode = 0;
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
@@ -159,7 +166,7 @@ void loop() {
     
     case 0:
     
-    static long last_watchdog_counter = -1;
+    static long last_watchdog_counter = 0;
     static int dose_count = 0;
     
     if (watchdog_counter == last_watchdog_counter) {
@@ -171,6 +178,7 @@ void loop() {
       if (digitalRead(button)==HIGH) {
         //do the info routine
         delay(1000);
+        readBatteryLevel();
         doBlink(readBatteryLevel(),250,500);        
         delay(INTER_BLINK_DELAY);
         doBlink(getDoseFrequency(),250,500);
@@ -200,6 +208,15 @@ void loop() {
     
     break;
     
+    case 2:
+
+    //motor stall code
+    
+    doBlink(2,500,500);
+    sleep();
+    
+    break;
+    
   }  
 } 
 
@@ -216,12 +233,13 @@ int readBatteryLevel() {
   int batteryLevel;
   
   long rawReading = analogRead(battery);
-  float rawVoltage = rawReading/1024.0 * 3.3;
-  float batteryVoltage = 3.2 * rawVoltage;
+  long rawVoltage = map(rawReading,0,1023,0,3300);
+  //float rawVoltage = rawReading/1024.0 * 3.3;
+  long batteryVoltage = 32 * rawVoltage/10;
 
-  if ( batteryVoltage > 7.8 ) { batteryLevel = 4; }
-  else if ( batteryVoltage > 7.2 ) { batteryLevel = 3; }
-  else if ( batteryVoltage > 6.6 ) { batteryLevel = 2; }
+  if ( batteryVoltage > 7800 ) { batteryLevel = 4; }
+  else if ( batteryVoltage > 7200 ) { batteryLevel = 3; }
+  else if ( batteryVoltage > 6600 ) { batteryLevel = 2; }
   else { batteryLevel = 1; }
 
   #if ECHO_TO_SERIAL
@@ -234,11 +252,11 @@ int readBatteryLevel() {
 }
 
 int getDoseFrequency() {
-  return 2;
+  return EEPROM.read(DOSE_FREQUENCY_ADDR);
 }
 
 int getDoseLevel() {
-  return 5;
+  return EEPROM.read(DOSE_LEVEL_ADDR);
 }
 
 long getDoseInterval() {
@@ -253,17 +271,16 @@ void runMotor(long duration) {
 
   
   while (millis() - m < duration || digitalRead(button)==LOW) {
-    long rawReading = analogRead(current);
-    float rawVoltage = rawReading/1024.0 * 3.3;
-    long motorCurrent = rawVoltage/1.4 * 1000;
+    long rawReading = analogRead(current); 
+    long rawVoltage = map(rawReading,0,1023,0,3300);//rawReading/1024.0 * 3.3;
+    long motorCurrent = rawVoltage*10/14;
     #if ECHO_TO_SERIAL
     Serial.print(rawReading); Serial.print(", "); 
     Serial.print(rawVoltage); Serial.print(", "); 
     Serial.println(motorCurrent); 
     #endif
     if ( motorCurrent > 400 ) {
-      analogWrite(motor,0); 
-      doBlink(5,200,200);
+      mode = 2;
       break;
     }
     doBlink(1,100,200);

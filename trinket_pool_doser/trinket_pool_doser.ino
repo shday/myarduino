@@ -35,6 +35,13 @@ int battery = 4;
 int current = 2;
 #endif
 
+int buttonState;
+int lastButtonState; 
+long lastButtonTime = 0;
+long lastDebounceTime = 0;  // the last time the output pin was toggled
+long debounceDelay = 50;    // the debounce time; increase if the output flickers
+long inputDelay = 500;
+
 
 //int longDuration = 2000;
 int mode;
@@ -144,8 +151,9 @@ void setup() {
   pinMode(motor, OUTPUT);
   
   
-  
-  if (digitalRead(button)== LOW) {
+  buttonState = digitalRead(button);
+  lastButtonState = buttonState;
+  if (buttonState == LOW) {
     mode = 1;
     EEPROM.write(DOSE_FREQUENCY_ADDR, 2);
     EEPROM.write(DOSE_LEVEL_ADDR, 5);
@@ -203,9 +211,41 @@ void loop() {
     break;
     
     case 1:
-
     //programming code
+    {
+  static int inputValue = 0; 
+  uint32_t m = millis();
+
+  int reading = digitalRead(button);
+    if (reading != lastButtonState) { 
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  } 
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+    //lastButtonState = buttonState;
     
+    if (buttonState != reading){
+    buttonState = reading;
+    if (buttonState == HIGH 
+        && m - lastButtonTime <= inputDelay) {
+      inputValue++;
+      digitalWrite(led,LOW);
+        }
+    /*  Serial.print(buttonPushCounter);
+      Serial.print(",");
+      Serial.println(mode);
+      Serial.print(","); 
+      Serial.print(rawKnobPosition);
+      Serial.print(",");   
+      Serial.println(knobPosition); */
+   lastButtonTime = lastDebounceTime; 
+  }
+  }
+  lastButtonState = reading;
+    }
+    //end programming code
     break;
     
     case 2:

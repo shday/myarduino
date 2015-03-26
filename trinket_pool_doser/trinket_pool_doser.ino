@@ -6,7 +6,7 @@
 //#include <avr/wdt.h>
 
 #define DOSE_LEVEL_ADDR 0
-#define DOSE_FREQUENCY_ADDR 1
+//#define DOSE_FREQUENCY_ADDR 1
 
 #define INTER_BLINK_DELAY 2000
 #define WDT_PRESCALER 9
@@ -36,12 +36,12 @@ int current = 2;
 #endif
 
 int buttonState;
-int lastButtonState; 
+int lastButtonState = HIGH; 
 long lastButtonTime = 0;
 long lastDebounceTime = 0;  // the last time the output pin was toggled
 long debounceDelay = 50;    // the debounce time; increase if the output flickers
 long inputDelay = 500;
-
+boolean buttonChanged;
 
 //int longDuration = 2000;
 int mode;
@@ -155,8 +155,8 @@ void setup() {
   lastButtonState = buttonState;
   if (buttonState == LOW) {
     mode = 1;
-    EEPROM.write(DOSE_FREQUENCY_ADDR, 2);
-    EEPROM.write(DOSE_LEVEL_ADDR, 5);
+    //EEPROM.write(DOSE_FREQUENCY_ADDR, 2);
+    //EEPROM.write(DOSE_LEVEL_ADDR, 5);
     
   } else {
     mode = 0;
@@ -170,6 +170,35 @@ void setup() {
 
 
 void loop() {
+  
+
+  static int previous = -1;
+  int reading = digitalRead(button);
+    if (reading != previous) { 
+      // reset the debouncing timer
+      lastDebounceTime = millis();
+    } 
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer
+    // than the debounce delay, so take it as the actual current state:
+      buttonState = reading;
+    }
+    
+    if (buttonState != lastButtonState){
+      buttonChanged = true;
+      lastButtonTime = millis();
+    } else {
+      buttonChanged = false;
+    }
+  lastButtonState = buttonState; 
+  previous = reading; 
+  
+  
+  
+  
+  
+  
+  
   switch(mode) {
     
     case 0:
@@ -213,37 +242,27 @@ void loop() {
     case 1:
     //programming code
     {
-  static int inputValue = 0; 
-  uint32_t m = millis();
-
-  int reading = digitalRead(button);
-    if (reading != lastButtonState) { 
-    // reset the debouncing timer
-    lastDebounceTime = millis();
-  } 
-    if ((millis() - lastDebounceTime) > debounceDelay) {
-    // whatever the reading is at, it's been there for longer
-    // than the debounce delay, so take it as the actual current state:
-    //lastButtonState = buttonState;
-    
-    if (buttonState != reading){
-    buttonState = reading;
+    static int inputValue = 0;
+    static byte inputIndex = 0;   
+    if (buttonChanged) {
+      if (buttonState == HIGH){
+        inputValue++;
+        digitalWrite(led,LOW);
+      } else {
+        digitalWrite(led,HIGH);
+      }
+    }
     if (buttonState == HIGH 
-        && m - lastButtonTime <= inputDelay) {
-      inputValue++;
-      digitalWrite(led,LOW);
-        }
-    /*  Serial.print(buttonPushCounter);
-      Serial.print(",");
-      Serial.println(mode);
-      Serial.print(","); 
-      Serial.print(rawKnobPosition);
-      Serial.print(",");   
-      Serial.println(knobPosition); */
-   lastButtonTime = lastDebounceTime; 
-  }
-  }
-  lastButtonState = reading;
+        && millis() - lastButtonTime > inputDelay) {
+      EEPROM.write(inputIndex + DOSE_LEVEL_ADDR, inputValue);
+      inputIndex++;
+      if (inputIndex == 2) {
+        mode = 0;
+      } else {
+        mode = 3;
+      }
+    }
+   
     }
     //end programming code
     break;
@@ -257,7 +276,32 @@ void loop() {
     
     break;
     
-  }  
+    case 3:
+    // pulsing led mode
+    {
+      static int brightness = 0;
+      static byte fadeAmount = 5;
+      static long time = 0;
+      static int fadeDelay = 20;
+
+      if (millis() - time > fadeDelay) {
+        time = millis();
+        brightness = brightness + fadeAmount;
+        if (brightness == 0 || brightness == 255) {
+          fadeAmount = -fadeAmount ;
+        } 
+      }   
+      analogWrite(led, brightness); 
+  
+      if (buttonChanged && buttonState == LOW){
+        mode = 1;
+        digitalWrite(led, HIGH);        
+      } 
+    
+    }
+    break;
+    
+  }
 } 
 
 void doBlink(int n_blinks, int blink_duration,int blink_delay) {
@@ -292,7 +336,7 @@ int readBatteryLevel() {
 }
 
 int getDoseFrequency() {
-  return EEPROM.read(DOSE_FREQUENCY_ADDR);
+  return EEPROM.read(DOSE_LEVEL_ADDR + 1);
 }
 
 int getDoseLevel() {

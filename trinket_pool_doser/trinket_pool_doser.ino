@@ -5,20 +5,22 @@
 //#include <avr/power.h>
 //#include <avr/wdt.h>
 
-#define DOSE_LEVEL_ADDR 0
-//#define DOSE_FREQUENCY_ADDR 1
+//#define DOSE_LEVEL_ADDR 0
+#define DOSE_FREQUENCY_ADDR 0
 
 #define INTER_BLINK_DELAY 2000
 #define WDT_PRESCALER 9
 //#define WDT_BASE_TICK 18.49
 #define DOSE_BASE 1000
-#define WDT_TICK 9456
+
 
 //const int wdt_tick = 18.49 * WDT_BASE_TICK * pow(2.0,WDT_PRESCALER) ;//millis per wdt count
 //const long day_millis = 86400000L;
 const long day_millis = 60000L;
 
 #if defined(__AVR_ATtiny85__)
+
+#define WDT_TICK 9456 //millis between WDT ticks
 #define ECHO_TO_SERIAL   0 // echo data to serial port
 int led = 0;
 int button = 3;
@@ -26,6 +28,8 @@ int motor = 1;
 int battery = 4;
 int current = 2;
 #else
+
+#define WDT_TICK 8600
 #define ECHO_TO_SERIAL   1 // echo data to serial port
 //assign UNO pins here
 int led = 11;
@@ -39,8 +43,8 @@ int buttonState;
 int lastButtonState = HIGH; 
 long lastButtonTime = 0;
 long lastDebounceTime = 0;  // the last time the output pin was toggled
-long debounceDelay = 50;    // the debounce time; increase if the output flickers
-long inputDelay = 500;
+int debounceDelay = 50;    // the debounce time; increase if the output flickers
+int inputDelay = 500;
 boolean buttonChanged;
 
 //int longDuration = 2000;
@@ -135,7 +139,9 @@ void setup() {
   
   #if ECHO_TO_SERIAL
   Serial.begin(9600);
-  Serial.println("Hello");  
+  Serial.println("Hello");
+  Serial.println(sizeof(int));  
+  Serial.println(sizeof(long));
   #endif
   
   #if defined(__AVR_ATtiny85__)
@@ -149,20 +155,20 @@ void setup() {
   pinMode(led, OUTPUT);  
   pinMode(button, INPUT_PULLUP); 
   pinMode(motor, OUTPUT);
-  
+
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  setup_watchdog(WDT_PRESCALER);   
   
   buttonState = digitalRead(button);
   lastButtonState = buttonState;
   if (buttonState == LOW) {
-    mode = 1;
+    mode = 3;
     //EEPROM.write(DOSE_FREQUENCY_ADDR, 2);
     //EEPROM.write(DOSE_LEVEL_ADDR, 5);
     
   } else {
     mode = 0;
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    setup_watchdog(WDT_PRESCALER); 
-    
+   
   }
   
   
@@ -234,6 +240,15 @@ void loop() {
     } else {
       doBlink(1,50,50);
     }
+    
+    #if ECHO_TO_SERIAL
+    Serial.println("WDT:");
+    Serial.print(watchdog_counter); Serial.print(", "); 
+    //Serial.print(inputValue); Serial.print(", "); 
+    //Serial.print(batteryVoltage);  Serial.print(", ");
+    Serial.println(last_watchdog_counter);
+    delay(10);
+    #endif
       
     last_watchdog_counter = watchdog_counter;
     sleep();
@@ -242,7 +257,7 @@ void loop() {
     case 1:
     //programming code
     {
-    static int inputValue = 0;
+    static byte inputValue = 0;
     static byte inputIndex = 0;   
     if (buttonChanged) {
       if (buttonState == HIGH){
@@ -254,7 +269,16 @@ void loop() {
     }
     if (buttonState == HIGH 
         && millis() - lastButtonTime > inputDelay) {
-      EEPROM.write(inputIndex + DOSE_LEVEL_ADDR, inputValue);
+      EEPROM.write(inputIndex + DOSE_FREQUENCY_ADDR, inputValue);
+      //doBlink(3,500,500);
+      #if ECHO_TO_SERIAL
+      Serial.print("InputIndex, Value:"); 
+      Serial.print(inputIndex); Serial.print(", "); 
+      //Serial.print(inputValue); Serial.print(", "); 
+      //Serial.print(batteryVoltage);  Serial.print(", ");
+      Serial.println(inputValue);
+      #endif
+      inputValue = 0;
       inputIndex++;
       if (inputIndex == 2) {
         mode = 0;
@@ -280,7 +304,7 @@ void loop() {
     // pulsing led mode
     {
       static int brightness = 0;
-      static byte fadeAmount = 5;
+      static int fadeAmount = 5;
       static long time = 0;
       static int fadeDelay = 20;
 
@@ -295,6 +319,7 @@ void loop() {
   
       if (buttonChanged && buttonState == LOW){
         mode = 1;
+        brightness = 0;
         digitalWrite(led, HIGH);        
       } 
     
@@ -313,13 +338,30 @@ void doBlink(int n_blinks, int blink_duration,int blink_delay) {
   }
 }
 
+int readBatteryVoltage() {
+  
+  int rawReading = analogRead(battery);
+  int rawVoltage = map(rawReading,0,1023,0,3300);
+  //float rawVoltage = rawReading/1024.0 * 3.3;
+  int batteryVoltage = 32L * rawVoltage/10;
+
+  #if ECHO_TO_SERIAL
+  Serial.print("raw,rawVolt,batVolt: "); 
+  Serial.print(rawReading); Serial.print(", "); 
+  Serial.print(rawVoltage); Serial.print(", "); 
+  Serial.println(batteryVoltage);  
+  #endif
+  return batteryVoltage;
+}
+
+
 int readBatteryLevel() {
   int batteryLevel;
   
-  long rawReading = analogRead(battery);
-  long rawVoltage = map(rawReading,0,1023,0,3300);
+  //int rawReading = analogRead(battery);
+  //int rawVoltage = map(rawReading,0,1023,0,3300);
   //float rawVoltage = rawReading/1024.0 * 3.3;
-  long batteryVoltage = 32 * rawVoltage/10;
+  int batteryVoltage = readBatteryVoltage();//32 * rawVoltage/10;
 
   if ( batteryVoltage > 7800 ) { batteryLevel = 4; }
   else if ( batteryVoltage > 7200 ) { batteryLevel = 3; }
@@ -327,20 +369,18 @@ int readBatteryLevel() {
   else { batteryLevel = 1; }
 
   #if ECHO_TO_SERIAL
-  Serial.print(rawReading); Serial.print(", "); 
-  Serial.print(rawVoltage); Serial.print(", "); 
-  Serial.print(batteryVoltage);  Serial.print(", ");
+  Serial.print("BatLevel: "); 
   Serial.println(batteryLevel);
   #endif
   return batteryLevel;
 }
 
 int getDoseFrequency() {
-  return EEPROM.read(DOSE_LEVEL_ADDR + 1);
+  return EEPROM.read(DOSE_FREQUENCY_ADDR);
 }
 
 int getDoseLevel() {
-  return EEPROM.read(DOSE_LEVEL_ADDR);
+  return EEPROM.read(DOSE_FREQUENCY_ADDR + 1);
 }
 
 long getDoseInterval() {
@@ -349,16 +389,17 @@ long getDoseInterval() {
 }
 
 void runMotor(long duration) {
-  int batteryLevel;
+  //int batteryLevel;
   long m = millis();
   analogWrite(motor,255);
 
   
   while (millis() - m < duration || digitalRead(button)==LOW) {
-    long rawReading = analogRead(current); 
-    long rawVoltage = map(rawReading,0,1023,0,3300);//rawReading/1024.0 * 3.3;
-    long motorCurrent = rawVoltage*10/14;
+    int rawReading = analogRead(current); 
+    int rawVoltage = map(rawReading,0,1023,0,3300);//rawReading/1024.0 * 3.3;
+    int motorCurrent = rawVoltage*10L/14;
     #if ECHO_TO_SERIAL
+    Serial.print("rawRead,rawVolt,motorCur: ");
     Serial.print(rawReading); Serial.print(", "); 
     Serial.print(rawVoltage); Serial.print(", "); 
     Serial.println(motorCurrent); 

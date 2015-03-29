@@ -25,8 +25,8 @@ const long day_millis = 60000L;
 int led = 0;
 int button = 3;
 int motor = 1;
-int battery = 4;
-int current = 2;
+int battery = 2;//pin4 = A2
+int current = 1;//pin2 = A1
 #else
 
 #define WDT_TICK 8600
@@ -62,7 +62,7 @@ watchdog_counter += 1;
 //}
 
 #if defined(__AVR_ATtiny85__)
-EMPTY_INTERRUPT(PCINT0_vect)
+EMPTY_INTERRUPT(PCINT3_vect)
 #else
 //pin interrupt ISR for UNO here
 void wakeUpNow()        // here the interrupt is handled after wakeup
@@ -78,7 +78,7 @@ void wakeUpNow()        // here the interrupt is handled after wakeup
 void sleep()
 {
   GIMSK |= 1<<PCIE; //Enable Pin Change Interrupt
-  PCMSK |= 1<<PCINT2; //Watch for Pin Change on Pin5 (PB0)
+  PCMSK |= 1<<PCINT3; //Watch for Pin Change on Pin5 (PB0)
  
   ADCSRA &= ~(1<<ADEN);
   
@@ -88,7 +88,7 @@ void sleep()
   
  
  GIMSK &= ~(1<<PCIE); //Disable the interrupt so it doesn't keep flagging
- PCMSK &= ~(1<<PCINT2);  
+ PCMSK &= ~(1<<PCINT3);  
 }
 #else
 void sleep()
@@ -148,11 +148,15 @@ void setup() {
   analogReference(EXTERNAL);
   #endif
 
-  analogRead(battery); //the first read should be ignored
   
   pinMode(led, OUTPUT);  
   pinMode(button, INPUT_PULLUP); 
   pinMode(motor, OUTPUT);
+  //pinMode(current, INPUT);
+  //pinMode(battery, INPUT);
+
+  analogRead(battery); //the first read should be ignored
+  analogRead(current); //the first read should be ignored
 
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   setup_watchdog(WDT_PRESCALER);   
@@ -390,7 +394,7 @@ void runMotor(long duration) {
   int duty = (695000L - 63L*readBatteryVoltage())/1000L; 
   if (duty>255)duty = 255;   
   analogWrite(motor,duty); 
-  
+
   while (millis() - m < duration || digitalRead(button)==LOW) {
   
     int rawReading = analogRead(current); 

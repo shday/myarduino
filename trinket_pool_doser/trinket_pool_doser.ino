@@ -30,7 +30,7 @@ int current = 2;
 #else
 
 #define WDT_TICK 8600
-#define ECHO_TO_SERIAL   1 // echo data to serial port
+#define ECHO_TO_SERIAL   0 // echo data to serial port
 //assign UNO pins here
 int led = 11;
 int button = 2; //must stay as pin 2 for interrupt to work 
@@ -140,8 +140,6 @@ void setup() {
   #if ECHO_TO_SERIAL
   Serial.begin(9600);
   Serial.println("Hello");
-  Serial.println(sizeof(int));  
-  Serial.println(sizeof(long));
   #endif
   
   #if defined(__AVR_ATtiny85__)
@@ -214,14 +212,12 @@ void loop() {
     
     if (watchdog_counter == last_watchdog_counter) {
       //this means sleep was left by a button push or reset
-      digitalWrite(led,HIGH);
-      delay(1000); //
-      digitalWrite(led,LOW);
+      delay(1000); // debounce
       
       if (digitalRead(button)==HIGH) {
         //do the info routine
         delay(1000);
-        readBatteryLevel();
+        analogRead(battery);
         doBlink(readBatteryLevel(),250,500);        
         delay(INTER_BLINK_DELAY);
         doBlink(getDoseFrequency(),250,500);
@@ -389,17 +385,20 @@ long getDoseInterval() {
 }
 
 void runMotor(long duration) {
-  //int batteryLevel;
+  analogRead(battery);
   long m = millis();
-  analogWrite(motor,255);
-
+  int duty = (695000L - 63L*readBatteryVoltage())/1000L; 
+  if (duty>255)duty = 255;   
+  analogWrite(motor,duty); 
   
   while (millis() - m < duration || digitalRead(button)==LOW) {
+  
     int rawReading = analogRead(current); 
     int rawVoltage = map(rawReading,0,1023,0,3300);//rawReading/1024.0 * 3.3;
     int motorCurrent = rawVoltage*10L/14;
     #if ECHO_TO_SERIAL
-    Serial.print("rawRead,rawVolt,motorCur: ");
+    Serial.print("duty,rawRead,rawVolt,motorCur: ");
+    Serial.print(duty); Serial.print(", "); 
     Serial.print(rawReading); Serial.print(", "); 
     Serial.print(rawVoltage); Serial.print(", "); 
     Serial.println(motorCurrent); 

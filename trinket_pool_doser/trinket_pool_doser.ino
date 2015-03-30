@@ -77,14 +77,9 @@ void wakeUpNow()        // here the interrupt is handled after wakeup
 #if defined(__AVR_ATtiny85__)
 void sleep()
 {
-  PCMSK |= 1<<PCINT3; //Watch for Pin Change on Pin5 (PB0)
+  PCMSK |= 1<<PCINT3; //Watch for Pin Change on Pin3
   GIMSK |= 1<<PCIE; //Enable Pin Change Interrupt
-<<<<<<< HEAD
-  
-=======
-  PCMSK |= 1<<PCINT3; //Watch for Pin Change on Pin5 (PB0)
- 
->>>>>>> 7fd268d13b28d73c69716abdb0d3f4c1e07fd083
+
   ADCSRA &= ~(1<<ADEN);
   
   sleep_mode();
@@ -92,8 +87,8 @@ void sleep()
   ADCSRA |= (1<<ADEN);
   
  
- GIMSK &= ~(1<<PCIE); //Disable the interrupt so it doesn't keep flagging
- PCMSK &= ~(1<<PCINT3);  
+  GIMSK &= ~(1<<PCIE); //Disable the interrupt so it doesn't keep flagging
+  PCMSK &= ~(1<<PCINT3);  
 }
 #else
 void sleep()

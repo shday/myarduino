@@ -62,7 +62,7 @@ watchdog_counter += 1;
 //}
 
 #if defined(__AVR_ATtiny85__)
-EMPTY_INTERRUPT(PCINT0_vect)
+EMPTY_INTERRUPT(PCINT3_vect)
 #else
 //pin interrupt ISR for UNO here
 void wakeUpNow()        // here the interrupt is handled after wakeup
@@ -79,7 +79,12 @@ void sleep()
 {
   PCMSK |= 1<<PCINT3; //Watch for Pin Change on Pin5 (PB0)
   GIMSK |= 1<<PCIE; //Enable Pin Change Interrupt
+<<<<<<< HEAD
   
+=======
+  PCMSK |= 1<<PCINT3; //Watch for Pin Change on Pin5 (PB0)
+ 
+>>>>>>> 7fd268d13b28d73c69716abdb0d3f4c1e07fd083
   ADCSRA &= ~(1<<ADEN);
   
   sleep_mode();

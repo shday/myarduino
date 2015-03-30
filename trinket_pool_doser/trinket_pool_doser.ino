@@ -44,7 +44,7 @@ int lastButtonState = HIGH;
 long lastButtonTime = 0;
 long lastDebounceTime = 0;  // the last time the output pin was toggled
 int debounceDelay = 50;    // the debounce time; increase if the output flickers
-int inputDelay = 500;
+int inputDelay = 1000;
 boolean buttonChanged;
 
 //int longDuration = 2000;
@@ -62,7 +62,7 @@ watchdog_counter += 1;
 //}
 
 #if defined(__AVR_ATtiny85__)
-EMPTY_INTERRUPT(PCINT3_vect)
+EMPTY_INTERRUPT(PCINT0_vect)
 #else
 //pin interrupt ISR for UNO here
 void wakeUpNow()        // here the interrupt is handled after wakeup
@@ -77,9 +77,9 @@ void wakeUpNow()        // here the interrupt is handled after wakeup
 #if defined(__AVR_ATtiny85__)
 void sleep()
 {
-  GIMSK |= 1<<PCIE; //Enable Pin Change Interrupt
   PCMSK |= 1<<PCINT3; //Watch for Pin Change on Pin5 (PB0)
- 
+  GIMSK |= 1<<PCIE; //Enable Pin Change Interrupt
+  
   ADCSRA &= ~(1<<ADEN);
   
   sleep_mode();
@@ -220,7 +220,7 @@ void loop() {
       
       if (digitalRead(button)==HIGH) {
         //do the info routine
-        delay(1000);
+        //delay(1000);
         analogRead(battery);
         doBlink(readBatteryLevel(),250,500);        
         delay(INTER_BLINK_DELAY);
@@ -270,7 +270,7 @@ void loop() {
     if (buttonState == HIGH 
         && millis() - lastButtonTime > inputDelay) {
       EEPROM.write(inputIndex + DOSE_FREQUENCY_ADDR, inputValue);
-      //doBlink(3,500,500);
+
       #if ECHO_TO_SERIAL
       Serial.print("InputIndex, Value:"); 
       Serial.print(inputIndex); Serial.print(", "); 
@@ -278,6 +278,7 @@ void loop() {
       //Serial.print(batteryVoltage);  Serial.print(", ");
       Serial.println(inputValue);
       #endif
+
       inputValue = 0;
       inputIndex++;
       if (inputIndex == 2) {

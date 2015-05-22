@@ -62,7 +62,7 @@ watchdog_counter += 1;
 //}
 
 #if defined(__AVR_ATtiny85__)
-EMPTY_INTERRUPT(PCINT3_vect)
+EMPTY_INTERRUPT(PCINT0_vect)
 #else
 //pin interrupt ISR for UNO here
 void wakeUpNow()        // here the interrupt is handled after wakeup

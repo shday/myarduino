@@ -30,7 +30,7 @@ int current = 1;//pin2 = A1
 #else
 
 #define WDT_TICK 8600
-#define ECHO_TO_SERIAL   0 // echo data to serial port
+#define ECHO_TO_SERIAL   1 // echo data to serial port
 //assign UNO pins here
 int led = 11;
 int button = 2; //must stay as pin 2 for interrupt to work 
@@ -296,7 +296,7 @@ void loop() {
 
     //motor stall code
     
-    doBlink(2,500,500);
+    doBlink(2,50,200);
     sleep();
     
     break;
@@ -344,7 +344,7 @@ int readBatteryVoltage() {
   int rawReading = analogRead(battery);
   int rawVoltage = map(rawReading,0,1023,0,3300);
   //float rawVoltage = rawReading/1024.0 * 3.3;
-  int batteryVoltage = 32L * rawVoltage/10;
+  int batteryVoltage = 31L * rawVoltage/10;
 
   #if ECHO_TO_SERIAL
   Serial.print("raw,rawVolt,batVolt: "); 
@@ -390,29 +390,40 @@ long getDoseInterval() {
 }
 
 void runMotor(long duration) {
+  int ary[3] = { 0,0,0 }; 
   analogRead(battery);
-  long m = millis();
+  int stallCurrent = map(readBatteryVoltage(),4000,9000,250,300); 
   int duty = (695000L - 63L*readBatteryVoltage())/1000L; 
-  if (duty>255)duty = 255;   
+  if (duty>255)duty = 255;  
+  long m = millis(); 
   analogWrite(motor,duty); 
 
   while (millis() - m < duration || digitalRead(button)==LOW) {
   
     int rawReading = analogRead(current); 
     int rawVoltage = map(rawReading,0,1023,0,3300);//rawReading/1024.0 * 3.3;
-    int motorCurrent = rawVoltage*10L/14;
+    int motorCurrent = rawVoltage*10L/15;
+    
+    int index = (millis()%1500)/500; // 0, 1 or 2
+    ary[index] = motorCurrent;
+    int sum = ary[0] + ary[1] + ary[2];
+    
     #if ECHO_TO_SERIAL
-    Serial.print("duty,rawRead,rawVolt,motorCur: ");
+    Serial.print("duty,stallCur,rawRead,rawVolt,motorCur,index,sum: ");
     Serial.print(duty); Serial.print(", "); 
+    Serial.print(stallCurrent); Serial.print(", "); 
     Serial.print(rawReading); Serial.print(", "); 
     Serial.print(rawVoltage); Serial.print(", "); 
-    Serial.println(motorCurrent); 
+    Serial.print(motorCurrent); Serial.print(", "); 
+    Serial.print(index); Serial.print(", "); 
+    Serial.println(sum); 
     #endif
-    if ( motorCurrent > 400 ) {
+    
+    if ( sum > stallCurrent * 3 ) {
       mode = 2;
       break;
     }
-    doBlink(1,100,200);
+    doBlink(1,50,100);
   }
   analogWrite(motor,0);
 }

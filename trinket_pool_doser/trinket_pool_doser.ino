@@ -13,11 +13,12 @@
 //#define WDT_BASE_TICK 18.49
 #define DOSE_BASE 1000
 #define COOL_DOWN_TIME 10000
+#define SHUTDOWN_VOLTAGE 6000
 
 
 //const int wdt_tick = 18.49 * WDT_BASE_TICK * pow(2.0,WDT_PRESCALER) ;//millis per wdt count
-//const long day_millis = 86400000L;
-const long day_millis = 60000L;
+//const long day_millis = 86400000L; //24 hours
+const long day_millis = 600000L; //ten minutes
 
 #if defined(__AVR_ATtiny85__)
 
@@ -395,7 +396,7 @@ long getDoseInterval() {
 void runMotor(long duration) {
   int ary[3] = { 0,0,0 }; 
   analogRead(battery);
-  int stallCurrent = map(readBatteryVoltage(),4000,9000,250,300); 
+  int stallCurrent = map(readBatteryVoltage(),6000,8000,300,400); 
   int duty = 255; //(695000L - 63L*readBatteryVoltage())/1000L; 
   //if (duty>255)duty = 255;  
   long m = millis(); 
@@ -406,6 +407,13 @@ void runMotor(long duration) {
     int rawReading = analogRead(current); 
     int rawVoltage = map(rawReading,0,1023,0,3300);
     int motorCurrent = rawVoltage*10L/15;
+    
+    if (readBatteryVoltage() < SHUTDOWN_VOLTAGE){
+      //don't damage the batteries
+      mode = 2;
+      break;
+    }
+
     
     int index = (millis()%1500)/500; // 0, 1 or 2. Changes every 500ms
     ary[index] = motorCurrent;
@@ -428,8 +436,6 @@ void runMotor(long duration) {
       m = m + COOL_DOWN_TIME;
       doBlink(1,COOL_DOWN_TIME,0);
       analogWrite(motor,duty);
-      //mode = 2;
-      //break;
     }
     doBlink(1,50,100);
   }

@@ -393,8 +393,8 @@ void runMotor(long duration) {
   int ary[3] = { 0,0,0 }; 
   analogRead(battery);
   int stallCurrent = map(readBatteryVoltage(),4000,9000,250,300); 
-  int duty = (695000L - 63L*readBatteryVoltage())/1000L; 
-  if (duty>255)duty = 255;  
+  int duty = 255; //(695000L - 63L*readBatteryVoltage())/1000L; 
+  //if (duty>255)duty = 255;  
   long m = millis(); 
   analogWrite(motor,duty); 
 

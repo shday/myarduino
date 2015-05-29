@@ -12,6 +12,7 @@
 #define WDT_PRESCALER 9
 //#define WDT_BASE_TICK 18.49
 #define DOSE_BASE 1000
+#define COOL_DOWN_TIME 10000
 
 
 //const int wdt_tick = 18.49 * WDT_BASE_TICK * pow(2.0,WDT_PRESCALER) ;//millis per wdt count
@@ -403,7 +404,7 @@ void runMotor(long duration) {
   while (millis() - m < duration || digitalRead(button)==LOW) {
   
     int rawReading = analogRead(current); 
-    int rawVoltage = map(rawReading,0,1023,0,3300);//rawReading/1024.0 * 3.3;
+    int rawVoltage = map(rawReading,0,1023,0,3300);
     int motorCurrent = rawVoltage*10L/15;
     
     int index = (millis()%1500)/500; // 0, 1 or 2. Changes every 500ms
@@ -422,8 +423,13 @@ void runMotor(long duration) {
     #endif
     
     if ( sum > stallCurrent * 3 ) {
-      mode = 2;
-      break;
+      //motor stalled (or came close). Stop for a while.
+      analogWrite(motor,0);
+      m = m + COOL_DOWN_TIME;
+      doBlink(1,COOL_DOWN_TIME,0);
+      analogWrite(motor,duty);
+      //mode = 2;
+      //break;
     }
     doBlink(1,50,100);
   }

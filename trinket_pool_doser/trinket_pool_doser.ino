@@ -216,7 +216,9 @@ void loop() {
     
     if (watchdog_counter == last_watchdog_counter) {
       //this means sleep was left by a button push or reset
-      delay(1000); // debounce
+      
+      if (watchdog_counter > 0) delay(1000); 
+      // there was a button push, do delay/debounce
       
       if (digitalRead(button)==HIGH) {
         //do the info routine
@@ -404,7 +406,7 @@ void runMotor(long duration) {
     int rawVoltage = map(rawReading,0,1023,0,3300);//rawReading/1024.0 * 3.3;
     int motorCurrent = rawVoltage*10L/15;
     
-    int index = (millis()%1500)/500; // 0, 1 or 2
+    int index = (millis()%1500)/500; // 0, 1 or 2. Changes every 500ms
     ary[index] = motorCurrent;
     int sum = ary[0] + ary[1] + ary[2];
     

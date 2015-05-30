@@ -433,6 +433,7 @@ void runMotor(long duration) {
     if ( sum > stallCurrent * 3 ) {
       //motor stalled (or came close). Stop for a while.
       analogWrite(motor,0);
+      ary[0]=0; ary[1]=0; ary[2]=0;
       m = m + COOL_DOWN_TIME;
       doBlink(1,COOL_DOWN_TIME,0);
       analogWrite(motor,duty);

@@ -11,14 +11,14 @@
 #define INTER_BLINK_DELAY 2000
 #define WDT_PRESCALER 9
 //#define WDT_BASE_TICK 18.49
-#define DOSE_BASE 1000
+#define DOSE_BASE 4350 // 0.87 s/g * 5g = 4350ms
 #define COOL_DOWN_TIME 10000
 #define SHUTDOWN_VOLTAGE 6000
 
 
 //const int wdt_tick = 18.49 * WDT_BASE_TICK * pow(2.0,WDT_PRESCALER) ;//millis per wdt count
-//const long day_millis = 86400000L; //24 hours
-const long day_millis = 600000L; //ten minutes
+const long day_millis = 86400000L; //24 hours
+//const long day_millis = 600000L; //ten minutes
 
 #if defined(__AVR_ATtiny85__)
 
@@ -432,6 +432,10 @@ void runMotor(long duration) {
     
     if ( sum > stallCurrent * 3 ) {
       //motor stalled (or came close). Stop for a while.
+      
+      if (digitalRead(button)==LOW) break;
+      //full stop if in manual mode
+      
       analogWrite(motor,0);
       ary[0]=0; ary[1]=0; ary[2]=0;
       m = m + COOL_DOWN_TIME;
